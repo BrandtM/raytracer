@@ -62,9 +62,9 @@ fn main() {
 
             color /= samples_per_pixel as f32;
 
-            let r = (255.0 * color.x) as u8;
-            let g = (255.0 * color.y) as u8;
-            let b = (255.0 * color.z) as u8;
+            let r = (255.0 * color.x.sqrt()) as u8;
+            let g = (255.0 * color.y.sqrt()) as u8;
+            let b = (255.0 * color.z.sqrt()) as u8;
             file.write(format!("{} {} {}\n", r, g, b).as_bytes()).unwrap();
         }
     }
