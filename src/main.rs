@@ -1,13 +1,15 @@
 
 extern crate cgmath;
 
-pub mod hitable;
-pub mod hitable_list;
-pub mod sphere;
-pub mod ray_hit;
-pub mod ray;
-pub mod camera;
+mod hitable;
+mod hitable_list;
+mod sphere;
+mod ray_hit;
+mod ray;
+mod camera;
+mod material;
 
+use std::rc::Rc;
 use std::fs::File;
 use std::io::prelude::*;
 use cgmath::Vector3;
@@ -16,6 +18,7 @@ use rand::Rng;
 use sphere::Sphere;
 use hitable_list::HitableList;
 use camera::Camera;
+use material::*;
 
 fn main() {
     let mut file = File::create("image.ppm").unwrap();
@@ -33,18 +36,53 @@ fn main() {
         Vector3::new(0.0, 2.0, 0.0)
     );
 
+    let mat1 = Lambertian {
+        albedo: Vector3::new(0.8, 0.3, 0.3),
+    };
+
+    let mat2 = Lambertian {
+        albedo: Vector3::new(0.8, 0.8, 0.0),
+    };
+
+    let mat3 = Metal {
+        albedo: Vector3::new(0.8, 0.6, 0.2),
+    };
+
+    let mat4 = Metal {
+        albedo: Vector3::new(0.8, 0.6, 0.6),
+    };
+
     let sphere1 = Sphere {
         center: Vector3::new(0.0, 0.0, -1.0),
         radius: 0.5,
+        material: Rc::new(mat1),
     };
 
     let sphere2 = Sphere {
         center: Vector3::new(0.0, -100.5, -1.0),
         radius: 100.0,
+        material: Rc::new(mat2),
+    };
+
+    let sphere3 = Sphere {
+        center: Vector3::new(1.0, 0.0, -1.0),
+        radius: 0.5,
+        material: Rc::new(mat3),
+    };
+
+    let sphere4 = Sphere {
+        center: Vector3::new(-1.0, 0.0, -1.0),
+        radius: 0.5,
+        material: Rc::new(mat4),
     };
 
     let hitable_list = HitableList {
-        list: vec![Box::new(sphere1), Box::new(sphere2)],
+        list: vec![
+            Box::new(sphere1), 
+            Box::new(sphere2),
+            Box::new(sphere3),
+            Box::new(sphere4),
+        ],
     };
 
     let mut rng = rand::thread_rng();
@@ -57,14 +95,15 @@ fn main() {
                 let u = (x as f32 + rng.gen::<f32>()) / wx as f32;
                 let v = (y as f32 + rng.gen::<f32>()) / wy as f32;
                 let ray = camera.get_ray(u, v);
-                color += ray.color(&hitable_list);
+                color += ray.color(&hitable_list, 0);
             }
+            
+            color /= samples_per_pixel as f32;            
 
-            color /= samples_per_pixel as f32;
+            let r = (255.99 * color.x.sqrt()) as u8;
+            let g = (255.99 * color.y.sqrt()) as u8;
+            let b = (255.99 * color.z.sqrt()) as u8;
 
-            let r = (255.0 * color.x.sqrt()) as u8;
-            let g = (255.0 * color.y.sqrt()) as u8;
-            let b = (255.0 * color.z.sqrt()) as u8;
             file.write(format!("{} {} {}\n", r, g, b).as_bytes()).unwrap();
         }
     }
