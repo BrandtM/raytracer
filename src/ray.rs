@@ -65,4 +65,28 @@ impl Ray {
 
         random_vec
     }
+
+    /// Reflect a non unit vector `input` using a given normal
+    pub fn reflect(input: Vector3<f32>, normal: Vector3<f32>) -> Vector3<f32> {
+        let input = input.normalize();
+        input - 2.0 * input.dot(normal) * normal
+    }
+
+    pub fn refract(input: Vector3<f32>, normal: Vector3<f32>, refraction_index: f32, refracted: &mut Vector3<f32>) -> bool {
+        let input = input.normalize();
+        let dot = input.dot(normal);
+        let discriminant = 1.0 - refraction_index.powi(2) * (1.0 - dot.powi(2));
+
+        if discriminant > 0.0 {
+            *refracted = refraction_index * (input - normal * dot) - normal * discriminant.sqrt();
+            return true;
+        }
+
+        false
+    }
+
+    pub fn schlick(cos: f32, refraction_index: f32) -> f32 {
+        let r0 = ((1.0 - refraction_index) / (1.0 + refraction_index)).powi(2);
+        r0 + (1.0 - r0) * (1.0 - cos).powi(5)
+    }
 }

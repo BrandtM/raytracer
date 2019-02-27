@@ -13,6 +13,7 @@ use std::rc::Rc;
 use std::fs::File;
 use std::io::prelude::*;
 use cgmath::Vector3;
+use cgmath::prelude::*;
 use rand::Rng;
 
 use sphere::Sphere;
@@ -37,7 +38,7 @@ fn main() {
     );
 
     let mat1 = Lambertian {
-        albedo: Vector3::new(0.8, 0.3, 0.3),
+        albedo: Vector3::new(0.1, 0.2, 0.5),
     };
 
     let mat2 = Lambertian {
@@ -46,10 +47,16 @@ fn main() {
 
     let mat3 = Metal {
         albedo: Vector3::new(0.8, 0.6, 0.2),
+        fuzz: 0.3,
     };
 
     let mat4 = Metal {
         albedo: Vector3::new(0.8, 0.6, 0.6),
+        fuzz: 1.0,
+    };
+
+    let mat5 = Dielectric {
+        refraction_index: 1.5,
     };
 
     let sphere1 = Sphere {
@@ -72,8 +79,8 @@ fn main() {
 
     let sphere4 = Sphere {
         center: Vector3::new(-1.0, 0.0, -1.0),
-        radius: 0.5,
-        material: Rc::new(mat4),
+        radius: -0.5,
+        material: Rc::new(mat5),
     };
 
     let hitable_list = HitableList {
@@ -98,7 +105,7 @@ fn main() {
                 color += ray.color(&hitable_list, 0);
             }
             
-            color /= samples_per_pixel as f32;            
+            color /= samples_per_pixel as f32;
 
             let r = (255.99 * color.x.sqrt()) as u8;
             let g = (255.99 * color.y.sqrt()) as u8;
