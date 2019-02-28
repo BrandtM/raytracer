@@ -31,10 +31,11 @@ fn main() {
     file.write(format!("P3\n{} {}\n255\n", wx, wy).as_bytes()).unwrap();
 
     let camera = Camera::new(
-        Vector3::new(0.0, 0.0, 0.0), 
-        Vector3::new(-2.0, -1.0, -1.0), 
-        Vector3::new(4.0, 0.0, 0.0), 
-        Vector3::new(0.0, 2.0, 0.0)
+        Vector3::new(-2.0, 2.0, 1.0),
+        Vector3::new(0.0, 0.0, -1.0),
+        Vector3::new(0.0, 1.0, 0.0),
+        45.0, 
+        wx as f32 / wy as f32
     );
 
     let mat1 = Lambertian {
@@ -79,7 +80,13 @@ fn main() {
 
     let sphere4 = Sphere {
         center: Vector3::new(-1.0, 0.0, -1.0),
-        radius: -0.5,
+        radius: -0.45,
+        material: Rc::new(mat5),
+    };
+
+    let sphere5 = Sphere {
+        center: Vector3::new(-1.0, 0.0, -1.0),
+        radius: 0.5,
         material: Rc::new(mat5),
     };
 
@@ -89,6 +96,7 @@ fn main() {
             Box::new(sphere2),
             Box::new(sphere3),
             Box::new(sphere4),
+            Box::new(sphere5),
         ],
     };
 
