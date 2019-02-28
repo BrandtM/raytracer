@@ -24,18 +24,23 @@ use material::*;
 fn main() {
     let mut file = File::create("image.ppm").unwrap();
 
-    let wx = 200;
-    let wy = 100;
+    let wx = 250;
+    let wy = 200;
     let samples_per_pixel = 100;
 
     file.write(format!("P3\n{} {}\n255\n", wx, wy).as_bytes()).unwrap();
 
+    let look_from = Vector3::new(3.0, 3.0, 2.0);
+    let look_at = Vector3::new(0.0, 0.0, -1.0);
+
     let camera = Camera::new(
-        Vector3::new(-2.0, 2.0, 1.0),
-        Vector3::new(0.0, 0.0, -1.0),
+        look_from,
+        look_at,
         Vector3::new(0.0, 1.0, 0.0),
-        45.0, 
-        wx as f32 / wy as f32
+        20.0, 
+        wx as f32 / wy as f32,
+        5.0,
+        (look_from - look_at).magnitude()
     );
 
     let mat1 = Lambertian {

@@ -66,6 +66,25 @@ impl Ray {
         random_vec
     }
 
+    #[allow(unused_assignments)]
+    pub fn random_in_unit_disk() -> Vector3<f32> {
+        let mut random_vec = Vector3::new(0.0, 0.0, 0.0);
+        let mut rng = rand::thread_rng();
+
+        loop {
+            let x = rng.gen::<f32>();
+            let y = rng.gen::<f32>();
+            let unit = Vector3::new(1.0, 1.0, 0.0);
+            random_vec = 2.0 * Vector3::new(x, y, 0.0) - unit;
+
+            if random_vec.magnitude() < 1.0 {
+                break;
+            }
+        }
+
+        random_vec
+    }
+
     /// Reflect a non unit vector `input` using a given normal
     pub fn reflect(input: Vector3<f32>, normal: Vector3<f32>) -> Vector3<f32> {
         let input = input.normalize();
