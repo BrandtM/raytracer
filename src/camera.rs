@@ -2,6 +2,7 @@ use cgmath::Vector3;
 use cgmath::prelude::*;
 use crate::ray::Ray;
 
+#[derive(Copy, Clone)]
 pub struct Camera {
 	pub origin: Vector3<f32>,
 	pub bottom_left: Vector3<f32>,

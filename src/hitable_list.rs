@@ -4,9 +4,11 @@ use crate::ray::Ray;
 use crate::ray_hit::RayHit;
 use cgmath::Vector3;
 use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
+#[derive(Clone)]
 pub struct HitableList {
-    pub list: Vec<Box<Hitable>>,
+    pub list: Vec<Arc<RwLock<Hitable + Send + Sync>>>,
 }
 
 impl Hitable for HitableList {
@@ -15,13 +17,13 @@ impl Hitable for HitableList {
             0.0,
             Vector3::new(0.0, 0.0, 0.0),
             Vector3::new(0.0, 0.0, 0.0),
-            Rc::new(EmptyMaterial {}),
+            Arc::new(RwLock::new(EmptyMaterial {})),
         );
         let mut hit_anything = false;
         let mut closest = t_max;
 
         for hitable in self.list.iter() {
-            if hitable.hit(ray, t_min, closest, &mut tmp_hit) {
+            if hitable.read().unwrap().hit(ray, t_min, closest, &mut tmp_hit) {
                 let tmp = tmp_hit.clone();
 
                 hit_anything = true;

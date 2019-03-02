@@ -2,6 +2,7 @@ use std::rc::Rc;
 use cgmath::prelude::*;
 use cgmath::Vector3;
 use rand::Rng;
+use std::sync::{Arc, RwLock};
 use crate::hitable::Hitable;
 use crate::ray_hit::RayHit;
 use crate::material::*;
@@ -25,13 +26,13 @@ impl Ray {
     }
 
     pub fn color(&self, world: &Hitable, depth: i32) -> Vector3<f32> {
-        let mut hit = RayHit::new(0.0, Vector3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 0.0), Rc::new(EmptyMaterial {}));
+        let mut hit = RayHit::new(0.0, Vector3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 0.0), Arc::new(RwLock::new(EmptyMaterial {})));
         
         if world.hit(*self, 0.001, std::f32::MAX, &mut hit) {
             let mut scattered = Ray::new(Vector3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 0.0));
             let mut attenuation = Vector3::new(0.0, 0.0, 0.0);
 
-            if depth < 50 && hit.material.scatter(*self, &hit, &mut attenuation, &mut scattered) {
+            if depth < 50 && hit.material.read().unwrap().scatter(*self, &hit, &mut attenuation, &mut scattered) {
                 return attenuation.mul_element_wise(Ray::cast(scattered, world, depth + 1));
             }
 

@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 cgmath = "0.17"
 rand = "0.6"
+num_cpus = "1.8"

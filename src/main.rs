@@ -1,5 +1,6 @@
 
 extern crate cgmath;
+extern crate num_cpus;
 
 mod hitable;
 mod hitable_list;
@@ -8,27 +9,26 @@ mod ray_hit;
 mod ray;
 mod camera;
 mod material;
+mod image;
 
 use std::rc::Rc;
-use std::fs::File;
-use std::io::prelude::*;
 use cgmath::Vector3;
 use cgmath::prelude::*;
 use rand::Rng;
+use std::sync::{Arc, RwLock};
 
 use sphere::Sphere;
 use hitable_list::HitableList;
 use camera::Camera;
 use material::*;
+use std::thread;
+use image::*;
 
 fn main() {
-    let mut file = File::create("image.ppm").unwrap();
-
-    let wx = 250;
-    let wy = 200;
+    let wx = 512_u32;
+    let wy = 512_u32;
     let samples_per_pixel = 100;
 
-    file.write(format!("P3\n{} {}\n255\n", wx, wy).as_bytes()).unwrap();
 
     let look_from = Vector3::new(3.0, 3.0, 2.0);
     let look_at = Vector3::new(0.0, 0.0, -1.0);
@@ -68,63 +68,102 @@ fn main() {
     let sphere1 = Sphere {
         center: Vector3::new(0.0, 0.0, -1.0),
         radius: 0.5,
-        material: Rc::new(mat1),
+        material: Arc::new(RwLock::new(mat1)),
     };
 
     let sphere2 = Sphere {
         center: Vector3::new(0.0, -100.5, -1.0),
         radius: 100.0,
-        material: Rc::new(mat2),
+        material: Arc::new(RwLock::new(mat2)),
     };
 
     let sphere3 = Sphere {
         center: Vector3::new(1.0, 0.0, -1.0),
         radius: 0.5,
-        material: Rc::new(mat3),
+        material: Arc::new(RwLock::new(mat3)),
     };
 
     let sphere4 = Sphere {
         center: Vector3::new(-1.0, 0.0, -1.0),
         radius: -0.45,
-        material: Rc::new(mat5),
+        material: Arc::new(RwLock::new(mat5)),
     };
 
     let sphere5 = Sphere {
         center: Vector3::new(-1.0, 0.0, -1.0),
         radius: 0.5,
-        material: Rc::new(mat5),
+        material: Arc::new(RwLock::new(mat5)),
     };
 
     let hitable_list = HitableList {
         list: vec![
-            Box::new(sphere1), 
-            Box::new(sphere2),
-            Box::new(sphere3),
-            Box::new(sphere4),
-            Box::new(sphere5),
+            Arc::new(RwLock::new(sphere1)),
+            Arc::new(RwLock::new(sphere2)),
+            Arc::new(RwLock::new(sphere3)),
+            Arc::new(RwLock::new(sphere4)),
+            Arc::new(RwLock::new(sphere5)),
         ],
     };
 
-    let mut rng = rand::thread_rng();
+    let empty_pixel = Pixel {red: 0, green: 0, blue: 0};
+    let pixels = Arc::new(RwLock::new(vec![vec![empty_pixel; wx as usize]; wy as usize]));
+    let thread_count = num_cpus::get();
+    
+    let mut handles: Vec<thread::JoinHandle<()>> = Vec::with_capacity(thread_count);
 
-    for y in (0..wy).rev() {
-        for x in 0..wx {
-            let mut color = Vector3::new(0.0, 0.0, 0.0);
+    for t in 0..thread_count {
+        let x_range_step = 128;
+        let y_range_step = 128;
 
-            for _sample in 0..samples_per_pixel {
-                let u = (x as f32 + rng.gen::<f32>()) / wx as f32;
-                let v = (y as f32 + rng.gen::<f32>()) / wy as f32;
-                let ray = camera.get_ray(u, v);
-                color += ray.color(&hitable_list, 0);
+        let x_range_start = (t * x_range_step) % wx as usize;
+        let y_range_start = (t / 4 * y_range_step) % wy as usize;
+        let world = hitable_list.clone();
+        let pixels = pixels.clone();
+        
+        let handle = thread::spawn(move || {
+            for y in (y_range_start..y_range_start+y_range_step).rev() {
+                for x in x_range_start..x_range_start+x_range_step {
+                    let mut rng = rand::thread_rng();
+
+                    let x: usize = x as usize;
+                    let y: usize = y as usize;
+                    
+                    let mut color = Vector3::new(0.0, 0.0, 0.0);
+
+                    for _sample in 0..samples_per_pixel {
+                        let u = (x as f32 + rng.gen::<f32>()) / wx as f32;
+                        let v = (y as f32 + rng.gen::<f32>()) / wy as f32;
+                        let ray = camera.get_ray(u, v);
+                        color += ray.color(&world, 0);
+                    }
+                    
+                    color /= samples_per_pixel as f32;
+                    
+                    let r = (255.99 * color.x.sqrt()) as u8;
+                    let g = (255.99 * color.y.sqrt()) as u8;
+                    let b = (255.99 * color.z.sqrt()) as u8;
+
+                    pixels.write().unwrap()[y][x] = Pixel {
+                        red: r,
+                        green: g,
+                        blue: b
+                    };
+                }
             }
-            
-            color /= samples_per_pixel as f32;
+        });
 
-            let r = (255.99 * color.x.sqrt()) as u8;
-            let g = (255.99 * color.y.sqrt()) as u8;
-            let b = (255.99 * color.z.sqrt()) as u8;
-
-            file.write(format!("{} {} {}\n", r, g, b).as_bytes()).unwrap();
-        }
+        handles.push(handle);
     }
+
+    for h in handles {
+        h.join().unwrap();
+    }
+
+    let img = Image {
+        width: wx,
+        height: wy,
+        pixels: pixels.read().unwrap().to_vec()
+    };
+
+    img.save("image.ppm").unwrap();
 }
