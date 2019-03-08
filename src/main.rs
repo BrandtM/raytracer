@@ -15,7 +15,8 @@ use std::rc::Rc;
 use cgmath::Vector3;
 use cgmath::prelude::*;
 use rand::Rng;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, mpsc};
+use std::time::Duration;
 
 use sphere::Sphere;
 use hitable_list::HitableList;
@@ -106,10 +107,11 @@ fn main() {
     };
 
     let empty_pixel = Pixel {red: 0, green: 0, blue: 0};
-    let pixels = Arc::new(RwLock::new(vec![vec![empty_pixel; wx as usize]; wy as usize]));
+    let mut pixels = vec![vec![empty_pixel; wx as usize]; wy as usize];
     let thread_count = num_cpus::get();
     
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::with_capacity(thread_count);
+    let (tx, rx) = mpsc::channel();
 
     for t in 0..thread_count {
         let x_range_step = 128;
@@ -118,7 +120,7 @@ fn main() {
         let x_range_start = (t * x_range_step) % wx as usize;
         let y_range_start = (t / 4 * y_range_step) % wy as usize;
         let world = hitable_list.clone();
-        let pixels = pixels.clone();
+        let thread_tx = tx.clone();
         
         let handle = thread::spawn(move || {
             for y in (y_range_start..y_range_start+y_range_step).rev() {
@@ -143,11 +145,11 @@ fn main() {
                     let g = (255.99 * color.y.sqrt()) as u8;
                     let b = (255.99 * color.z.sqrt()) as u8;
 
-                    pixels.write().unwrap()[y][x] = Pixel {
+                    thread_tx.send(([x, y], Pixel {
                         red: r,
                         green: g,
                         blue: b
-                    };
+                    })).unwrap();
                 }
             }
         });
@@ -159,10 +161,24 @@ fn main() {
         h.join().unwrap();
     }
 
+    loop {
+        let data = rx.recv_timeout(Duration::from_secs(2));
+
+        match data {
+            Ok((coords, pixel)) => {
+                let x = coords[0];
+                let y = coords[1];
+
+                pixels[y][x] = pixel;
+            },
+            _ => break
+        }
+    }
+    
     let img = Image {
         width: wx,
         height: wy,
-        pixels: pixels.read().unwrap().to_vec()
+        pixels: pixels
     };
 
     img.save("image.ppm").unwrap();
