@@ -1,6 +1,7 @@
+
 use cgmath::Vector3;
 use cgmath::prelude::*;
-use crate::ray::Ray;
+use crate::ray2::Ray2;
 
 #[derive(Copy, Clone)]
 pub struct Camera {
@@ -39,11 +40,11 @@ impl Camera {
 		}
 	}
 
-	pub fn get_ray(&self, u: f32, v: f32) -> Ray {
-		let rd = self.lens_radius * Ray::random_in_unit_disk();
+	pub fn get_ray(&self, u: f32, v: f32) -> Ray2 {
+		let rd = self.lens_radius * Ray2::random_in_unit_disk();
 		let offset = u * rd.x + v * rd.y;
 		let offset_vec = Vector3::new(offset, offset, offset);
 
-		Ray::new(self.origin + offset_vec, self.bottom_left + u * self.horizontal + v * self.vertical - self.origin - offset_vec)
+		Ray2::new(self.origin + offset_vec, self.bottom_left + u * self.horizontal + v * self.vertical - self.origin - offset_vec)
 	}
 }

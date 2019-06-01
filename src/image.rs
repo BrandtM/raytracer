@@ -16,17 +16,21 @@ pub struct Image {
 }
 
 impl Image {
-	pub fn save(&self, file_name: &str) -> std::io::Result<usize> {
+	pub fn save(&self, file_name: &str) -> Result<(), std::io::Error> {
 		let mut file = File::create(file_name)?;
-		let mut pixel_str = String::new();
+		//let mut pixel_str = String::new();
 		file.write(format!("P3\n{} {}\n255\n", self.width, self.height).as_bytes())?;
 
 		self.pixels.iter().rev().for_each(|pixel_row| {
 			pixel_row.iter().for_each(|pixel| {
-				pixel_str = format!("{}{} {} {}\n", pixel_str, pixel.red, pixel.green, pixel.blue);
+				file.write(
+					format!("{} {} {}\n", pixel.red, pixel.green, pixel.blue).as_bytes()
+				).unwrap();
+				// pixel_str = format!("{}{} {} {}\n", pixel_str, pixel.red, pixel.green, pixel.blue);
 			});
 		});
 
-		file.write(pixel_str.as_bytes())
+		Ok(())
+		// file.write(pixel_str.as_bytes())
 	}
 }

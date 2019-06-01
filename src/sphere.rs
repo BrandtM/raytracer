@@ -1,21 +1,21 @@
 use crate::hitable::Hitable;
-use crate::material::*;
-use crate::ray::Ray;
+// use crate::material::*;
+use crate::ray2::Ray2;
 use crate::ray_hit::RayHit;
 use cgmath::prelude::*;
 use cgmath::Vector3;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Sphere {
     pub center: Vector3<f32>,
     pub radius: f32,
-    pub material: Arc<RwLock<Material + Send + Sync>>,
+    // pub material: Arc<RwLock<Material + Send + Sync>>,
 }
 
 impl Hitable for Sphere {
-    fn hit(&self, ray: Ray, t_min: f32, t_max: f32, hit: &mut RayHit) -> bool {
+    fn hit(&self, ray: &Ray2, t_min: f32, t_max: f32) -> Option<RayHit> {
         let origin_center = ray.origin - self.center;
         let a = ray.direction.dot(ray.direction);
         let b = origin_center.dot(ray.direction);
@@ -26,24 +26,18 @@ impl Hitable for Sphere {
             let mut tmp = (-b - discriminant.sqrt()) / a;
 
             if tmp < t_max && tmp > t_min {
-                hit.t = tmp;
-                hit.point = ray.point_at(tmp);
-                hit.normal = (hit.point - self.center) / self.radius;
-                hit.material = self.material.clone();
-                return true;
+				let hitpoint = ray.point_at(tmp);
+				return Some(RayHit::new(tmp, hitpoint, (hitpoint - self.center) / self.radius));
             }
 
             tmp = (-b + discriminant.sqrt()) / a;
 
             if tmp < t_max && tmp > t_min {
-                hit.t = tmp;
-                hit.point = ray.point_at(tmp);
-                hit.normal = (hit.point - self.center) / self.radius;
-                hit.material = self.material.clone();
-                return true;
+				let hitpoint = ray.point_at(tmp);
+				return Some(RayHit::new(tmp, hitpoint, (hitpoint - self.center) / self.radius));
             }
         }
 
-        false
+        None
     }
 }
