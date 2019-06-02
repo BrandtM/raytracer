@@ -5,6 +5,7 @@ use crate::sphere::*;
 use crate::hitable_list::*;
 use crate::hitable::*;
 
+#[derive(Copy, Clone)]
 pub struct Ray2 {
 	pub origin: Vector3<f32>,
 	pub direction: Vector3<f32>
@@ -18,18 +19,21 @@ impl Ray2 {
 		}
 	}
 
-	/// Return a value for `t` given f(t) = self.origin + t * self.direction
 	pub fn point_at(&self, t: f32) -> Vector3<f32> {
 		self.origin + t * self.direction
 	}
 
-	/// Return the color of the current ray
-	pub fn color(&self, hitable_list: HitableList) -> Vector3<f32> {
+	pub fn color(&self, hitable_list: HitableList, depth: u32) -> Vector3<f32> {
 		let color: Vector3<f32>;
 
-		match hitable_list.hit(&self, 0.0, std::f32::MAX) {
+		match hitable_list.hit(&self, 0.001, std::f32::MAX) {
 			Some(hit) => {
-				color = 0.5 * Vector3::new(hit.normal.x + 1.0, hit.normal.y + 1.0, hit.normal.z + 1.0);
+				if depth < 50 {
+					let material_info = hit.material.unwrap();
+					color = material_info.attenuation.mul_element_wise(material_info.scattered.color(hitable_list, depth + 1));
+				} else {
+					color = Vector3::new(0.0, 0.0, 0.0);
+				}
 			},
 			None => {
 				let normalized = self.direction.normalize();
