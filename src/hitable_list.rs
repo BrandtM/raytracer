@@ -8,14 +8,14 @@ use std::sync::{Arc, RwLock};
 
 #[derive(Clone)]
 pub struct HitableList {
-    pub list: Vec<Box<dyn Hitable>>,
+	pub list: Vec<Box<dyn Hitable>>,
 }
 
 impl Hitable for HitableList {
-    fn hit(&self, ray: &Ray2, t_min: f32, t_max: f32) -> Option<RayHit> {
-        let mut tmp_hit = None;
-        let mut hit_anything = false;
-        let mut closest = t_max;
+	fn hit(&self, ray: &Ray2, t_min: f32, t_max: f32) -> Option<RayHit> {
+		let mut tmp_hit = None;
+		let mut hit_anything = false;
+		let mut closest = t_max;
 
 		self.list.iter().for_each(|hitable| {
 			match hitable.hit(ray, t_min, closest) {
@@ -27,6 +27,6 @@ impl Hitable for HitableList {
 			}
 		});
 
-        tmp_hit
-    }
+		tmp_hit
+	}
 }
