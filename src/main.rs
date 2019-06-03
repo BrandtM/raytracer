@@ -1,5 +1,5 @@
 mod image;
-mod ray2;
+mod ray;
 mod sphere;
 mod hitable;
 mod ray_hit;
@@ -12,7 +12,6 @@ use cgmath::Vector3;
 use rayon::prelude::*;
 use rand::Rng;
 use image::*;
-use ray2::*;
 use sphere::*;
 use hitable_list::*;
 use camera::*;
@@ -31,6 +30,23 @@ fn main() {
 		})
 	};
 
+	let sphere_right = Sphere {
+		center: Vector3::new(1.0, 0.0, -1.0), 
+		radius: 0.5,
+		material: Box::new(Metal {
+			albedo: Vector3::new(0.8, 0.6, 0.2),
+			fuzz: 1.0
+		})
+	};
+
+	let sphere_left = Sphere {
+		center: Vector3::new(-1.0, 0.0, -1.0), 
+		radius: 0.5,
+		material: Box::new(Dielectric {
+			refraction_index: 1.5
+		})
+	};
+
 	let ground_sphere = Sphere {
 		center: Vector3::new(0.0, -100.5, -1.0), 
 		radius: 100.0,
@@ -39,19 +55,24 @@ fn main() {
 		})
 	};
 
+	let look_from = Vector3::new(3.0, 3.0, 2.0);
+	let look_at = Vector3::new(0.0, 0.0, -1.0);
+
 	let camera = Camera::new(
-		Vector3::new(0.0, 0.0, 2.0), 
-		Vector3::new(0.0, 0.0, -1.0), 
+		look_from, 
+		look_at, 
 		Vector3::new(0.0, 1.0, 0.0),
 		45.0, 
 		x_resolution as f32 / y_resolution as f32, 
-		0.00, 
-		100.0
+		0.2, 
+		(look_from - look_at).magnitude()
 	);
 
 	let hitable_list = HitableList {
 		list: vec![
 			Box::new(main_sphere),
+			Box::new(sphere_right),
+			Box::new(sphere_left),
 			Box::new(ground_sphere),
 		]
 	};
@@ -84,5 +105,5 @@ fn main() {
 		pixels
 	};
 
-	img.save("wow.ppm");
+	img.save("image.ppm").unwrap();
 }

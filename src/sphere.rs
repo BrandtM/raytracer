@@ -1,11 +1,9 @@
 use crate::hitable::Hitable;
 use crate::material::*;
-use crate::ray2::Ray2;
+use crate::ray::Ray;
 use crate::ray_hit::RayHit;
 use cgmath::prelude::*;
 use cgmath::Vector3;
-use std::rc::Rc;
-use std::sync::{Arc, RwLock};
 
 #[derive(Clone)]
 pub struct Sphere {
@@ -15,7 +13,7 @@ pub struct Sphere {
 }
 
 impl Hitable for Sphere {
-	fn hit(&self, ray: &Ray2, t_min: f32, t_max: f32) -> Option<RayHit> {
+	fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<RayHit> {
 		let origin_center = ray.origin - self.center;
 		let a = ray.direction.dot(ray.direction);
 		let b = origin_center.dot(ray.direction);

@@ -1,8 +1,5 @@
-use std::rc::Rc;
 use cgmath::Vector3;
-use std::sync::{Arc, RwLock};
 use crate::material::*;
-use crate::ray2::*;
 
 #[derive(Clone)]
 pub struct RayHit {

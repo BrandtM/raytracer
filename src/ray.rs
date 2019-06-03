@@ -1,52 +1,57 @@
-use std::rc::Rc;
 use cgmath::prelude::*;
 use cgmath::Vector3;
 use rand::Rng;
-use std::sync::{Arc, RwLock};
-use crate::hitable::Hitable;
-use crate::ray_hit::RayHit;
-use crate::material::*;
+use crate::hitable_list::*;
+use crate::hitable::*;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct Ray {
 	pub origin: Vector3<f32>,
-	pub direction: Vector3<f32>,
+	pub direction: Vector3<f32>
 }
 
 impl Ray {
-	pub fn new(origin: Vector3<f32>, direction: Vector3<f32>) -> Ray {
+	pub fn new(orig: Vector3<f32>, dir: Vector3<f32>) -> Ray {
 		Ray {
-			origin,
-			direction,
+			origin: orig,
+			direction: dir
 		}
 	}
 
 	pub fn point_at(&self, t: f32) -> Vector3<f32> {
-		return self.origin + t * self.direction;
+		self.origin + t * self.direction
 	}
 
-	pub fn color(&self, world: &Hitable, depth: i32) -> Vector3<f32> {
-		let mut hit = RayHit::new(0.0, Vector3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 0.0), Arc::new(RwLock::new(EmptyMaterial {})));
-		
-		if world.hit(*self, 0.001, std::f32::MAX, &mut hit) {
-			let mut scattered = Ray::new(Vector3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 0.0));
-			let mut attenuation = Vector3::new(0.0, 0.0, 0.0);
+	pub fn color(&self, hitable_list: HitableList, depth: u32) -> Vector3<f32> {
+		let color: Vector3<f32>;
 
-			if depth < 50 && hit.material.read().unwrap().scatter(*self, &hit, &mut attenuation, &mut scattered) {
-				return attenuation.mul_element_wise(Ray::cast(scattered, world, depth + 1));
+		match hitable_list.hit(&self, 0.001, std::f32::MAX) {
+			Some(hit) => {
+				if depth < 50 {
+					let material_info = hit.material.unwrap();
+					color = material_info.attenuation.mul_element_wise(material_info.scattered.color(hitable_list, depth + 1));
+				} else {
+					color = Vector3::new(0.0, 0.0, 0.0);
+				}
+			},
+			None => {
+				let normalized = self.direction.normalize();
+				let t = 0.5 * (normalized.y + 1.0);
+				let white = Vector3::new(1.0, 1.0, 1.0);
+				let blue = Vector3::new(0.5, 0.7, 1.0);
+
+				color = (1.0 - t) * white + t * blue;
 			}
-
-			return Vector3::new(0.0, 0.0, 0.0);
 		}
 
-		let t = 0.5 * self.direction.normalize().y + 1.0;
-		(1.0 - t) * Vector3::new(1.0, 1.0, 1.0) + t * Vector3::new(0.5, 0.7, 1.0)
+		color
 	}
 
-	pub fn cast(ray: Ray, world: &Hitable, depth: i32) -> Vector3<f32> {
-		ray.color(world, depth)
+	/// Reflect a non unit vector `input` using a given normal
+	pub fn reflect(input: Vector3<f32>, normal: Vector3<f32>) -> Vector3<f32> {
+		let input = input.normalize();
+		input - 2.0 * input.dot(normal) * normal
 	}
-
 	#[allow(unused_assignments)]
 	pub fn random_in_unit_sphere() -> Vector3<f32> {
 		let mut random_vec = Vector3::new(0.0, 0.0, 0.0);
@@ -84,12 +89,6 @@ impl Ray {
 		}
 
 		random_vec
-	}
-
-	/// Reflect a non unit vector `input` using a given normal
-	pub fn reflect(input: Vector3<f32>, normal: Vector3<f32>) -> Vector3<f32> {
-		let input = input.normalize();
-		input - 2.0 * input.dot(normal) * normal
 	}
 
 	pub fn refract(input: Vector3<f32>, normal: Vector3<f32>, refraction_index: f32, refracted: &mut Vector3<f32>) -> bool {
