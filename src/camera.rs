@@ -1,3 +1,4 @@
+
 use cgmath::Vector3;
 use cgmath::prelude::*;
 use crate::ray::Ray;
@@ -13,17 +14,13 @@ pub struct Camera {
 
 impl Camera {
 	pub fn new(look_from: Vector3<f32>, look_at: Vector3<f32>, view_up: Vector3<f32>, vfov: f32, aspect: f32, aperture: f32, focus_distance: f32) -> Camera {
-		let mut u = Vector3::new(0.0, 0.0, 0.0); // camera x
-		let mut v = Vector3::new(0.0, 0.0, 0.0); // camera y
-		let mut w = Vector3::new(0.0, 0.0, 0.0); // camera z
-
 		let theta = vfov * (std::f32::consts::PI / 180.0);
 		let half_height = (theta / 2.0).tan();
 		let half_width = aspect * half_height;
 
-		w = (look_from - look_at).normalize();
-		u = view_up.cross(w).normalize();
-		v = w.cross(u);
+		let w = (look_from - look_at).normalize();
+		let u = view_up.cross(w).normalize();
+		let v = w.cross(u);
 
 		let bottom_left = look_from - half_width * focus_distance * u - half_height * focus_distance * v - focus_distance * w;
 		let horizontal = 2.0 * half_width * focus_distance * u;

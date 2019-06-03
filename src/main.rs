@@ -1,185 +1,109 @@
-
-extern crate cgmath;
-extern crate num_cpus;
-
-mod hitable;
-mod hitable_list;
-mod sphere;
-mod ray_hit;
+mod image;
 mod ray;
+mod sphere;
+mod hitable;
+mod ray_hit;
+mod hitable_list;
 mod camera;
 mod material;
-mod image;
 
-use std::rc::Rc;
-use cgmath::Vector3;
 use cgmath::prelude::*;
+use cgmath::Vector3;
+use rayon::prelude::*;
 use rand::Rng;
-use std::sync::{Arc, RwLock, mpsc};
-use std::time::Duration;
-
-use sphere::Sphere;
-use hitable_list::HitableList;
-use camera::Camera;
-use material::*;
-use std::thread;
 use image::*;
+use sphere::*;
+use hitable_list::*;
+use camera::*;
+use material::*;
 
 fn main() {
-    let wx = 512_u32;
-    let wy = 512_u32;
-    let samples_per_pixel = 100;
+	let x_resolution = 200;
+	let y_resolution = 100;
+	let samples_per_pixel = 100;
 
+	let main_sphere = Sphere {
+		center: Vector3::new(0.0, 0.0, -1.0), 
+		radius: 0.5,
+		material: Box::new(Lambertian {
+			albedo: Vector3::new(0.8, 0.3, 0.3)
+		})
+	};
 
-    let look_from = Vector3::new(3.0, 3.0, 2.0);
-    let look_at = Vector3::new(0.0, 0.0, -1.0);
+	let sphere_right = Sphere {
+		center: Vector3::new(1.0, 0.0, -1.0), 
+		radius: 0.5,
+		material: Box::new(Metal {
+			albedo: Vector3::new(0.8, 0.6, 0.2),
+			fuzz: 1.0
+		})
+	};
 
-    let camera = Camera::new(
-        look_from,
-        look_at,
-        Vector3::new(0.0, 1.0, 0.0),
-        20.0, 
-        wx as f32 / wy as f32,
-        5.0,
-        (look_from - look_at).magnitude()
-    );
+	let sphere_left = Sphere {
+		center: Vector3::new(-1.0, 0.0, -1.0), 
+		radius: 0.5,
+		material: Box::new(Dielectric {
+			refraction_index: 1.5
+		})
+	};
 
-    let mat1 = Lambertian {
-        albedo: Vector3::new(0.1, 0.2, 0.5),
-    };
+	let ground_sphere = Sphere {
+		center: Vector3::new(0.0, -100.5, -1.0), 
+		radius: 100.0,
+		material: Box::new(Lambertian {
+			albedo: Vector3::new(0.8, 0.8, 0.0)
+		})
+	};
 
-    let mat2 = Lambertian {
-        albedo: Vector3::new(0.8, 0.8, 0.0),
-    };
+	let look_from = Vector3::new(3.0, 3.0, 2.0);
+	let look_at = Vector3::new(0.0, 0.0, -1.0);
 
-    let mat3 = Metal {
-        albedo: Vector3::new(0.8, 0.6, 0.2),
-        fuzz: 0.3,
-    };
+	let camera = Camera::new(
+		look_from, 
+		look_at, 
+		Vector3::new(0.0, 1.0, 0.0),
+		45.0, 
+		x_resolution as f32 / y_resolution as f32, 
+		0.2, 
+		(look_from - look_at).magnitude()
+	);
 
-    let mat4 = Metal {
-        albedo: Vector3::new(0.8, 0.6, 0.6),
-        fuzz: 1.0,
-    };
+	let hitable_list = HitableList {
+		list: vec![
+			Box::new(main_sphere),
+			Box::new(sphere_right),
+			Box::new(sphere_left),
+			Box::new(ground_sphere),
+		]
+	};
+	
+	let pixels: Vec<Vec<Pixel>> = (0..y_resolution).into_par_iter().map(|y| {
+		(0..x_resolution).into_par_iter().map(|x| {
+			let mut color = (0..samples_per_pixel).into_par_iter().map(|_| {
+				let mut rng = rand::thread_rng();
 
-    let mat5 = Dielectric {
-        refraction_index: 1.5,
-    };
+				let u = (x as f32 + rng.gen::<f32>()) / x_resolution as f32;
+				let v = (y as f32 + rng.gen::<f32>()) / y_resolution as f32;
 
-    let sphere1 = Sphere {
-        center: Vector3::new(0.0, 0.0, -1.0),
-        radius: 0.5,
-        material: Arc::new(RwLock::new(mat1)),
-    };
+				let ray = camera.get_ray(u, v);
+				ray.color(hitable_list.clone(), 0)
+			}).reduce(|| Vector3::new(0.0, 0.0, 0.0), |col, ray_color| col + ray_color);
+			
+			color /= samples_per_pixel as f32;
 
-    let sphere2 = Sphere {
-        center: Vector3::new(0.0, -100.5, -1.0),
-        radius: 100.0,
-        material: Arc::new(RwLock::new(mat2)),
-    };
+			Pixel {
+				red: (255_f32 * color.x.sqrt()) as u8,
+				green: (255_f32 * color.y.sqrt()) as u8,
+				blue: (255_f32 * color.z.sqrt()) as u8
+			}
+		}).collect()
+	}).collect();
 
-    let sphere3 = Sphere {
-        center: Vector3::new(1.0, 0.0, -1.0),
-        radius: 0.5,
-        material: Arc::new(RwLock::new(mat3)),
-    };
+	let img = Image {
+		width: x_resolution,
+		height: y_resolution,
+		pixels
+	};
 
-    let sphere4 = Sphere {
-        center: Vector3::new(-1.0, 0.0, -1.0),
-        radius: -0.45,
-        material: Arc::new(RwLock::new(mat5)),
-    };
-
-    let sphere5 = Sphere {
-        center: Vector3::new(-1.0, 0.0, -1.0),
-        radius: 0.5,
-        material: Arc::new(RwLock::new(mat5)),
-    };
-
-    let hitable_list = HitableList {
-        list: vec![
-            Arc::new(RwLock::new(sphere1)),
-            Arc::new(RwLock::new(sphere2)),
-            Arc::new(RwLock::new(sphere3)),
-            Arc::new(RwLock::new(sphere4)),
-            Arc::new(RwLock::new(sphere5)),
-        ],
-    };
-
-    let empty_pixel = Pixel {red: 0, green: 0, blue: 0};
-    let mut pixels = vec![vec![empty_pixel; wx as usize]; wy as usize];
-    let thread_count = num_cpus::get();
-    
-    let mut handles: Vec<thread::JoinHandle<()>> = Vec::with_capacity(thread_count);
-    let (tx, rx) = mpsc::channel();
-
-    for t in 0..thread_count {
-        let x_range_step = 128;
-        let y_range_step = 128;
-
-        let x_range_start = (t * x_range_step) % wx as usize;
-        let y_range_start = (t / 4 * y_range_step) % wy as usize;
-        let world = hitable_list.clone();
-        let thread_tx = tx.clone();
-        
-        let handle = thread::spawn(move || {
-            for y in (y_range_start..y_range_start+y_range_step).rev() {
-                for x in x_range_start..x_range_start+x_range_step {
-                    let mut rng = rand::thread_rng();
-
-                    let x: usize = x as usize;
-                    let y: usize = y as usize;
-                    
-                    let mut color = Vector3::new(0.0, 0.0, 0.0);
-
-                    for _sample in 0..samples_per_pixel {
-                        let u = (x as f32 + rng.gen::<f32>()) / wx as f32;
-                        let v = (y as f32 + rng.gen::<f32>()) / wy as f32;
-                        let ray = camera.get_ray(u, v);
-                        color += ray.color(&world, 0);
-                    }
-                    
-                    color /= samples_per_pixel as f32;
-                    
-                    let r = (255.99 * color.x.sqrt()) as u8;
-                    let g = (255.99 * color.y.sqrt()) as u8;
-                    let b = (255.99 * color.z.sqrt()) as u8;
-
-                    thread_tx.send(([x, y], Pixel {
-                        red: r,
-                        green: g,
-                        blue: b
-                    })).unwrap();
-                }
-            }
-        });
-
-        handles.push(handle);
-    }
-
-    for h in handles {
-        h.join().unwrap();
-    }
-
-    loop {
-        let data = rx.recv_timeout(Duration::from_secs(2));
-
-        match data {
-            Ok((coords, pixel)) => {
-                let x = coords[0];
-                let y = coords[1];
-
-                pixels[y][x] = pixel;
-            },
-            _ => break
-        }
-    }
-    
-    let img = Image {
-        width: wx,
-        height: wy,
-        pixels: pixels
-    };
-
-    img.save("image.ppm").unwrap();
+	img.save("image.ppm").unwrap();
 }

@@ -4,8 +4,24 @@ use rand::Rng;
 use crate::ray::Ray;
 use crate::ray_hit::RayHit;
 
-pub trait Material {
-	fn scatter(&self, ray: Ray, hit: &RayHit, attenuation: &mut Vector3<f32>, scattered: &mut Ray) -> bool;
+pub trait Material: MaterialClone + Sync {
+	fn scatter(&self, ray: &Ray, hit: &RayHit) -> MaterialHitInfo;
+}
+
+pub trait MaterialClone {
+	fn clone_box(&self) -> Box<dyn Material>;
+}
+
+impl<T> MaterialClone for T where T: 'static + Material + Clone {
+	fn clone_box(&self) -> Box<dyn Material> {
+		Box::new(self.clone())
+	}
+}
+
+impl Clone for Box<dyn Material> {
+	fn clone(&self) -> Box<dyn Material> {
+		self.clone_box()
+	}
 }
 
 #[derive(Copy, Clone)]
@@ -25,55 +41,55 @@ pub struct Dielectric {
 }
 
 #[derive(Copy, Clone)]
-pub struct EmptyMaterial { }
-
-impl Material for EmptyMaterial {
-	fn scatter(&self, _ray: Ray, hit: &RayHit, _attenuation: &mut Vector3<f32>, scattered: &mut Ray) -> bool {
-		*scattered = Ray {
-			origin: hit.point,
-			direction: hit.normal
-		};
-
-		true
-	}
+pub struct MaterialHitInfo {
+	pub attenuation: Vector3<f32>,
+	pub scattered: Ray,
 }
 
 impl Material for Lambertian {
-	fn scatter(&self, _ray: Ray, hit: &RayHit, attenuation: &mut Vector3<f32>, scattered: &mut Ray) -> bool {
+	fn scatter(&self, _ray: &Ray, hit: &RayHit) -> MaterialHitInfo {
 		let target = hit.point + hit.normal + Ray::random_in_unit_sphere();
-		*scattered = Ray {
+		let scattered = Ray {
 			origin: hit.point,
 			direction: target - hit.point,
 		};
 
-		*attenuation = self.albedo;
-		true
+		let attenuation = self.albedo;
+		
+		MaterialHitInfo {
+			attenuation,
+			scattered
+		}
 	}
 }
 
 impl Material for Metal {
-	fn scatter(&self, ray: Ray, hit: &RayHit, attenuation: &mut Vector3<f32>, scattered: &mut Ray) -> bool {
+	fn scatter(&self, ray: &Ray, hit: &RayHit) -> MaterialHitInfo {
 		let mut reflection = Ray::reflect(ray.direction, hit.normal);
-		reflection += self.fuzz * Ray::random_in_unit_sphere();
+		reflection += self.fuzz.min(1.0) * Ray::random_in_unit_sphere();
 
-		*scattered = Ray {
+		let scattered = Ray {
 			origin: hit.point,
 			direction: reflection,
 		};
 		
-		*attenuation = self.albedo;
+		let attenuation = self.albedo;
 		
-		scattered.direction.dot(hit.normal) > 0.0
+		MaterialHitInfo {
+			attenuation,
+			scattered
+		}
 	}
 }
 
 impl Material for Dielectric {
 	#[allow(unused_assignments)]
-	fn scatter(&self, ray: Ray, hit: &RayHit, attenuation: &mut Vector3<f32>, scattered: &mut Ray) -> bool {
+	fn scatter(&self, ray: &Ray, hit: &RayHit) -> MaterialHitInfo {
 		let mut rng = rand::thread_rng();
 		let reflected = Ray::reflect(ray.direction, hit.normal);
 		let mut refraction_index = self.refraction_index;
-		*attenuation = Vector3::new(1.0, 1.0, 1.0);
+		let attenuation = Vector3::new(1.0, 1.0, 1.0);
+		let mut scattered: Ray;
 
 		let mut outward_normal = Vector3::new(0.0, 0.0, 0.0);
 		let mut refracted = Vector3::new(0.0, 0.0, 0.0);
@@ -92,7 +108,7 @@ impl Material for Dielectric {
 		if Ray::refract(ray.direction, outward_normal, refraction_index, &mut refracted) {
 			reflection_prob = Ray::schlick(cos, refraction_index);
 		} else {
-			*scattered = Ray {
+			scattered = Ray {
 				origin: hit.point,
 				direction: reflected,
 			};
@@ -101,17 +117,20 @@ impl Material for Dielectric {
 		}
 
 		if rng.gen::<f32>() < reflection_prob {
-			*scattered = Ray {
+			scattered = Ray {
 				origin: hit.point,
 				direction: reflected,
-			}
+			};
 		} else {
-			*scattered = Ray {
+			scattered = Ray {
 				origin: hit.point,
 				direction: refracted,
-			}
+			};
 		}
 
-		true
+		MaterialHitInfo {
+			attenuation,
+			scattered
+		}
 	}
 }
