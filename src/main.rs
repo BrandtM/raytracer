@@ -18,9 +18,9 @@ use camera::*;
 use material::*;
 
 fn main() {
-	let x_resolution = 200;
-	let y_resolution = 100;
-	let samples_per_pixel = 100;
+	let x_resolution = 1280;
+	let y_resolution = 720;
+	let samples_per_pixel = 500;
 
 	let main_sphere = Sphere {
 		center: Vector3::new(0.0, 0.0, -1.0), 
@@ -44,6 +44,15 @@ fn main() {
 		radius: 0.5,
 		material: Box::new(Dielectric {
 			refraction_index: 1.5
+		})
+	};
+
+	let sphere_front = Sphere {
+		center: Vector3::new(0.0, 0.0, 0.0), 
+		radius: 0.5,
+		material: Box::new(Metal {
+			albedo: Vector3::new(0.8, 0.8, 0.8),
+			fuzz: 0.3
 		})
 	};
 
@@ -73,6 +82,7 @@ fn main() {
 			Box::new(main_sphere),
 			Box::new(sphere_right),
 			Box::new(sphere_left),
+			Box::new(sphere_front),
 			Box::new(ground_sphere),
 		]
 	};
