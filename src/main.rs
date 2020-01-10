@@ -6,6 +6,7 @@ mod ray_hit;
 mod hitable_list;
 mod camera;
 mod material;
+mod plane;
 
 use cgmath::prelude::*;
 use cgmath::Vector3;
@@ -16,6 +17,7 @@ use sphere::*;
 use hitable_list::*;
 use camera::*;
 use material::*;
+use plane::*;
 
 fn main() {
 	let x_resolution = 1280;
@@ -60,7 +62,18 @@ fn main() {
 		center: Vector3::new(0.0, -100.5, -1.0), 
 		radius: 100.0,
 		material: Box::new(Lambertian {
-			albedo: Vector3::new(0.8, 0.8, 0.0)
+			albedo: Vector3::new(0.8, 0.3, 0.0)
+		})
+	};
+
+	let some_plane = Plane {
+		center: Vector3::new(-1.0, -2.2, -3.5),
+		normal: Vector3::new(-0.4, 0.0, 1.0),
+		width: Vector3::new(3.0, 0.0, 0.0),
+		height: Vector3::new(0.0, 4.0, 0.0),
+		material: Box::new(Metal {
+			albedo: Vector3::new(0.8, 0.8, 0.8),
+			fuzz: 0.3
 		})
 	};
 
@@ -84,6 +97,7 @@ fn main() {
 			Box::new(sphere_left),
 			Box::new(sphere_front),
 			Box::new(ground_sphere),
+			Box::new(some_plane),
 		]
 	};
 	
