@@ -22,3 +22,7 @@ cargo run --release  326.15s user 2.19s system 1344% cpu 24.416 total
 24.5 seconds isn't too bad I think.  
 
 ![Example image](https://raw.githubusercontent.com/BrandtM/raytracer/master/images/example.png)  
+
+And a example of the recently added planes:  
+
+![Plane example image](https://raw.githubusercontent.com/BrandtM/raytracer/master/images/plane_example.png)

@@ -67,13 +67,13 @@ fn main() {
 	};
 
 	let some_plane = Plane {
-		center: Vector3::new(-1.0, -2.2, -3.5),
-		normal: Vector3::new(-0.4, 0.0, 1.0),
+		center: Vector3::new(-1.2, -2.2, -3.5),
+		normal: Vector3::new(-0.4, -0.3, 1.0),
 		width: Vector3::new(3.0, 0.0, 0.0),
 		height: Vector3::new(0.0, 4.0, 0.0),
 		material: Box::new(Metal {
 			albedo: Vector3::new(0.8, 0.8, 0.8),
-			fuzz: 0.3
+			fuzz: 0.1
 		})
 	};
 

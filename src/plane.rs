@@ -30,7 +30,7 @@ impl Hitable for Plane {
 			let proj2 = v.dot(self.height) / height;
 
 			if (proj1 < width && proj1 > 0.0) && (proj2 < height && proj2 > 0.0) {
-				let mut hit = RayHit::new(t, hitpoint, hitpoint - self.center, None);
+				let mut hit = RayHit::new(t, hitpoint, self.normal, None);
 				let material_hit = self.material.scatter(ray, &hit);
 				hit.material = Some(material_hit);
 				return Some(hit);
